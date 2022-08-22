@@ -17,6 +17,11 @@ namespace Faith.Server.Data
 
         public FaithContext(DbContextOptions options) : base(options) { }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseSqlite("Filename=Faith.db");
+        }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             const string DateFormat = "dd-MM-yyyy";

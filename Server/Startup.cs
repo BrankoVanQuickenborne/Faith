@@ -23,8 +23,14 @@ namespace Faith.Server
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            var mySqlConnectionStr = Configuration.GetConnectionString("faithContext");
-            services.AddDbContext<FaithContext>(options => options.UseMySql(mySqlConnectionStr, ServerVersion.AutoDetect(mySqlConnectionStr)));
+            //var mySqlConnectionStr = Configuration.GetConnectionString("faithContext");
+            //services.AddDbContext<FaithContext>(options => options.UseMySql(mySqlConnectionStr, ServerVersion.AutoDetect(mySqlConnectionStr)));
+            services
+                //.AddEntityFrameworkSqlite()
+                .AddDbContext<FaithContext>(options =>
+                {
+                    options.UseSqlite();
+                });
             services.AddScoped<FaithDataInitializer>();
 
             services.AddAuthentication(options =>
