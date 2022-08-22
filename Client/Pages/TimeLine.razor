@@ -1,0 +1,149 @@
+﻿@page "/timeline/{selectedPostID}"
+@using Faith.Shared.DTOs
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject HttpClient Http
+@attribute [Authorize]
+
+<h1>Tijdlijn</h1>
+
+@if (users == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-4">
+            @foreach (var user in users)
+            {
+                @foreach (var post in user.TimeLine.Posts)
+                {
+                    @if (post.PostID.ToString() == SelectedPostID) {
+                        <div class="card mb-4 border-success">
+                            <div class="card-body">
+                                <h3 class="card-title">
+                                        <a class="text-dark" href="timeline/@(post.PostID)">@(user.FirstName + " " + user.FamilyName)</a>
+                                </h3>
+                                <p class="card-text">
+                                    @post.Text
+                                </p>
+                            </div>
+                            <div class="card-footer text-muted">
+                                @post.Date
+                            </div>
+                        </div>
+                    } else {
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h3 class="card-title">
+                                    <a class="text-dark" href="timeline/@(post.PostID)" role="button">@(user.FirstName + " " + user.FamilyName)</a>
+                                </h3>
+                                <p class="card-text">
+                                    @post.Text
+                                </p>
+                            </div>
+                            <div class="card-footer text-muted">
+                                @post.Date
+                            </div>
+                        </div>
+                    }
+                }
+            }
+        </div>
+
+        <div class="col-8">
+            @foreach (var user in users)
+            {
+                @foreach (var post in user.TimeLine.Posts)
+                {
+                    @if (post.PostID.ToString() == SelectedPostID)
+                    {
+                        <div class="card mb-4 border-success">
+                            <div class="card-header text-right">
+                                Archive Post
+                            </div>
+                            <div class="card-body">
+                                <h3 class="card-title">@(user.FirstName + " " + user.FamilyName)</h3>
+                                <p class="card-text">
+                                    @post.Text
+                                </p>
+                            </div>
+                            <div class="card-footer text-muted">
+                                @post.Date
+                            </div>
+                        </div>
+                        @if (selectedPost == null || selectedPost.Reactions == null)
+                        {
+                            <p><em>Loading...</em></p>
+                        }
+                        else
+                        {
+                            <div class="row">
+                            <div class="col-1 text-center">
+                                -->
+                            </div>
+                            <div class="col-11">
+                                @if (selectedPost.Reactions.Count == 0)
+                                {
+                                    <p><em>No Reactions Yet...</em></p>
+                                }
+                                else
+                                {
+                                    @foreach (var reaction in selectedPost.Reactions.OrderBy(r => r.Date))
+                                    {
+                                        <textarea class="form-control" placeholder="@reaction.Text" disabled />
+                                        <p class="text-muted mb-3">@reaction.Date</p>
+                                    }
+                                }
+                                <EditForm Model="newReaction" OnValidSubmit="AddReaction">
+                                    <div class="form-group">
+                                        <InputTextArea class="form-control" placeholder="..." @bind-Value="newReaction.Text" />
+                                    </div>
+
+                                    <button class="btn btn-primary mt-2" type="submit">React</button>
+                                </EditForm>
+                            </div>
+                            </div>
+                        }
+                    }
+                }
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string SelectedPostID { get; set; }
+    private UserDTO[] users;
+    private PostDTO selectedPost;
+    private ReactionDTO newReaction = new ReactionDTO();
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserDTO loggedInUser = await Http.GetFromJsonAsync<UserDTO>($"/api/user/get-logged-in-user");
+        users = await Http.GetFromJsonAsync<UserDTO[]>($"/api/timeline/get-all-posts-for-monitor/{loggedInUser.UserID}");
+        List<PostDTO> allPosts = new List<PostDTO>();
+        foreach (var user in users)
+        {
+            allPosts.AddRange(user.TimeLine.Posts);
+        }
+        selectedPost = SelectedPostID != "-" ? allPosts.SingleOrDefault(p => p.PostID.ToString() == SelectedPostID) : null;
+    }
+
+    private void RefreshData()
+    {
+        List<PostDTO> allPosts = new List<PostDTO>();
+        foreach (var user in users)
+        {
+            allPosts.AddRange(user.TimeLine.Posts);
+        }
+        selectedPost = SelectedPostID != "-" ? allPosts.SingleOrDefault(p => p.PostID.ToString() == SelectedPostID) : null;
+    }
+
+    private async Task AddReaction() {
+        var response = await Http.PostAsJsonAsync<ReactionDTO>($"/api/timeline/add-reaction-to-post/{selectedPost.PostID}", newReaction);
+        response.EnsureSuccessStatusCode();
+        selectedPost.Reactions.Add(new ReactionDTO() { Text = newReaction.Text });
+    }
+}

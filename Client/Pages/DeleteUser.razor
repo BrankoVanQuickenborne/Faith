@@ -1,0 +1,51 @@
+﻿@page "/delete-user/{userID}"
+@using Faith.Shared.Domain
+@using Faith.Shared.DTOs
+@using Faith.Shared.Enums
+@using System.Net.Http
+@using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+@attribute [Authorize(Roles = "Administrator,Monitor")]
+
+<h3>Delete User</h3>
+
+<EditForm Model="UserID" OnValidSubmit="Remove">
+    Are you sure you want to delete @(user?.FirstName + " " + user?.FamilyName)?<br />
+    <button class="btn btn-danger mt-2" type="submit">Remove User</button>
+</EditForm>
+<br />
+<EditForm Model="UserID" OnValidSubmit="StopMonitoring">
+    Or do you just want to stop monitoring?<br />
+    <button class="btn btn-warning mt-2" type="submit">Stop Monitoring</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public string UserID { get; set; }
+    private UserDTO user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await Http.GetFromJsonAsync<UserDTO>($"/api/user/get-by-id/{UserID}");
+    }
+
+    private async Task StopMonitoring()
+    {
+        UserDTO loggedInUser = await Http.GetFromJsonAsync<UserDTO>($"/api/user/get-logged-in-user");
+        loggedInUser.Youngsters = new List<UserDTO>();
+        loggedInUser.Youngsters.Add(user);
+        var response = await Http.PostAsJsonAsync<UserDTO>($"/api/user/disconnect", loggedInUser);
+        response.EnsureSuccessStatusCode();
+        NavigationManager.NavigateTo("group");
+    }
+
+    private async Task Remove()
+    {
+        var response = await Http.DeleteAsync($"/api/user/delete/{UserID}");
+        response.EnsureSuccessStatusCode();
+        NavigationManager.NavigateTo("group");
+    }
+}
